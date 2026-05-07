@@ -1,144 +1,109 @@
 import streamlit as st
 import pandas as pd
 
-# 1. Page Config
-st.set_page_config(page_title="Maharaj Lectures", page_icon="🕉️", layout="wide")
+# 1. Config
+st.set_page_config(page_title="Maharaj App", page_icon="🙏", layout="centered")
 
-# 2. Advanced CSS to Force Light Mode and App Styling
+# 2. Modern "App" CSS
 st.markdown("""
     <style>
-    /* FORCE LIGHT MODE COLORS */
-    :root {
-        --primary-color: #E65100;
-        --background-color: #FFF9F2;
-        --secondary-background-color: #FFF3E0;
-        --text-color: #3E2723;
-        --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    /* Main Background */
-    .stApp { 
-        background-color: #FFF9F2 !important; 
-    }
+    /* Global Styles */
+    .stApp { background-color: #FAFAFA; }
+    h2 { color: #D84315; font-family: 'Helvetica Neue', sans-serif; }
     
-    /* Force text color globally */
-    h1, h2, h3, p, span, div {
-        color: #3E2723 !important;
-    }
-
-    /* Card Styling - Mobile Optimized */
-    .lecture-card {
-        background: white !important;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #FFE0B2;
-    }
-    
-    /* Title Styling */
-    .lecture-title {
-        color: #BF360C !important;
-        font-weight: 700;
-        font-size: 1.05rem;
-        margin-bottom: 5px;
-        line-height: 1.3;
-    }
-    
-    /* Metadata Pills */
-    .pill {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 15px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        margin-right: 4px;
-        margin-bottom: 4px;
-        background: #FBE9E7 !important;
-        color: #D84315 !important;
-        border: 0.5px solid #FFCCBC;
-    }
-
-    /* Sidebar text fix */
-    section[data-testid="stSidebar"] {
-        background-color: #FFF3E0 !important;
-    }
-    
-    /* Button Styling Override */
-    .stButton>button {
-        border-radius: 8px;
+    /* Search Bar Styling */
+    .stTextInput>div>div>input {
+        border-radius: 25px;
         border: 1px solid #FFCCBC;
-        background-color: white;
-        transition: 0.3s;
+        padding: 10px 20px;
     }
-    .stButton>button:hover {
-        background-color: #E65100;
+
+    /* Modern Lecture Card */
+    .lecture-card {
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 16px;
+        margin-bottom: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid #f0f0f0;
+        transition: transform 0.2s;
+    }
+    .lecture-card:active { transform: scale(0.98); }
+    
+    .category-pill {
+        background: #FFF3E0;
+        color: #E65100;
+        padding: 4px 12px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .play-btn {
+        background-color: #E65100 !important;
         color: white !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
-    try:
-        return pd.read_csv("Maharaj_Perfect_Metadata.csv")
-    except:
-        return pd.DataFrame()
+    return pd.read_csv("Maharaj_Perfect_Metadata.csv")
 
 df = load_data()
 
-# --- HEADER ---
-st.markdown("<h2 style='text-align: center; color: #E65100; margin-bottom: 0;'>🙏 Bhakti Gaurav Narayan Swami</h2>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #5D4037; font-size: 0.9rem;'>Official Audio Library</p>", unsafe_allow_html=True)
+# --- APP HEADER ---
+st.markdown("<div style='text-align: center; padding-top: 20px;'>", unsafe_allow_html=True)
+st.image("https://cdn-icons-png.flaticon.com/512/2903/2903513.png", width=60)
+st.markdown("<h2>Gaurav Narayan Maharaj</h2>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
-# --- SIDEBAR FILTERS ---
-st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2903/2903513.png", width=60)
-st.sidebar.markdown("### 🔍 Quick Search")
-search_query = st.sidebar.text_input("", placeholder="Topic, Place, Verse...")
+# --- AI & SEARCH SECTION ---
+tabs = st.tabs(["🔍 Search", "🤖 AI Librarian", "📌 Categories"])
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🎯 Filter By")
-selected_year = st.sidebar.multiselect("Year", sorted(df['Year'].unique(), reverse=True))
-selected_lang = st.sidebar.multiselect("Language", df['Language'].unique(), default=df['Language'].unique())
-selected_type = st.sidebar.radio("Category", ["All"] + list(df['Type'].unique()))
+with tabs[0]:
+    search_query = st.text_input("", placeholder="Find a lecture, verse, or place...", key="main_search")
 
-# --- LOGIC ---
-filtered_df = df[df['Language'].isin(selected_lang)]
-if selected_year:
-    filtered_df = filtered_df[filtered_df['Year'].isin(selected_year)]
-if selected_type != "All":
-    filtered_df = filtered_df[filtered_df['Type'] == selected_type]
+with tabs[1]:
+    st.info("Ask me anything about Maharaj's lectures (Coming Soon with Gemini API)")
+    ai_prompt = st.text_input("Ask AI", placeholder="e.g. Which lectures are about Krishna's pastimes in Vrindavan?")
+
+with tabs[2]:
+    st.write("Browse by Content Type")
+    cols = st.columns(3)
+    types = list(df['Type'].unique())
+    for i, t in enumerate(types[:6]):
+        cols[i % 3].button(t, use_container_width=True)
+
+# --- LISTING ---
+filtered_df = df.copy()
 if search_query:
-    filtered_df = filtered_df[filtered_df['File Name'].str.contains(search_query, case=False, na=False)]
+    filtered_df = df[df['Code'].str.contains(search_query, case=False, na=False) | 
+                     df['Location'].str.contains(search_query, case=False, na=False)]
 
-# --- MAIN LIST ---
-st.caption(f"Found {len(filtered_df)} lectures")
+st.markdown(f"<p style='color: gray; font-size: 0.8rem;'>{len(filtered_df)} Lectures Found</p>", unsafe_allow_html=True)
 
 for i, row in filtered_df.iterrows():
-    # Extract Drive ID for buttons
-    source_url = str(row['Source Link'])
-    file_id = source_url.split('id=')[-1].split('&')[0] if 'id=' in source_url else ""
+    file_id = row['Source Link'].split('id=')[-1].split('&')[0]
     preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
     
     with st.container():
         st.markdown(f"""
             <div class="lecture-card">
-                <div class="lecture-title">{row['Code']}</div>
-                <div style="margin-top: 5px;">
-                    <span class="pill">🌍 {row['Language']}</span>
-                    <span class="pill">📍 {row['Location']}</span>
-                    <span class="pill">📅 {row['Year']}</span>
+                <span class="category-pill">{row['Type']}</span>
+                <div style="font-size: 1.1rem; font-weight: 700; margin-top: 10px; color: #333;">{row['Code']}</div>
+                <div style="color: #888; font-size: 0.85rem; margin-bottom: 15px;">
+                    📅 {row['Date']} • 📍 {row['Location']} • 🗣️ {row['Language']}
                 </div>
             </div>
         """, unsafe_allow_html=True)
         
-        # Action Buttons for Mobile (Stacked)
-        c1, c2, c3 = st.columns([1.5, 1, 1])
+        c1, c2 = st.columns(2)
         with c1:
-            st.link_button("▶️ Listen", preview_url, use_container_width=True)
+            st.link_button("▶️ LISTEN NOW", preview_url, use_container_width=True)
         with c2:
-            st.link_button("📥 Save", source_url, use_container_width=True)
-        with c3:
-            share_text = f"Maharaj Lecture: {row['Code']} - {preview_url}"
-            st.link_button("🔗 WhatsApp", f"https://wa.me/?text={share_text}", use_container_width=True)
-        st.markdown("<div style='margin-bottom:15px;'></div>", unsafe_allow_html=True)
+            st.link_button("📥 DOWNLOAD", row['Source Link'], use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
