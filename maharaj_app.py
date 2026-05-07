@@ -4,22 +4,20 @@ import pandas as pd
 # 1. Page Configuration
 st.set_page_config(page_title="Maharaj Audio", page_icon="🕉️", layout="centered")
 
-# 2. Safe CSS strictly for the Cards (No messing with Streamlit's native text)
+# 2. Safe CSS for the Cards
 st.markdown("""
     <style>
-    /* Hide Streamlit Clutter */
     #MainMenu {visibility: hidden;}
     header {visibility: hidden;}
     footer {visibility: hidden;}
 
-    /* Beautiful Lecture Card */
     .maharaj-card {
         background-color: #ffffff;
         padding: 20px;
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         margin-bottom: 15px;
-        border-left: 5px solid #D84315; /* Saffron Accent */
+        border-left: 5px solid #D84315;
     }
     
     .maharaj-title {
@@ -50,11 +48,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Load Data
+# 3. Optimized Data Loading
 @st.cache_data
 def load_data():
     try:
-        return pd.read_csv("Maharaj_Perfect_Metadata.csv")
+        df = pd.read_csv("Maharaj_Perfect_Metadata.csv")
+        # Ensure it's sorted by Year descending so the newest (e.g., 2026) are at the top
+        if 'Year' in df.columns:
+            df = df.sort_values(by='Year', ascending=False)
+        return df
     except:
         return pd.DataFrame()
 
@@ -63,10 +65,9 @@ df = load_data()
 # 4. App Header
 st.image("https://cdn-icons-png.flaticon.com/512/2903/2903513.png", width=60)
 st.title("Maharaj Audio Library")
-st.caption("Official Archive of HH Bhakti Gaurav Narayan Swami")
 
 if not df.empty:
-    # 5. Search & Filters (Now perfectly readable thanks to config.toml)
+    # 5. Search & Filters
     search_query = st.text_input("🔍 Search", placeholder="Find a topic, place, or verse...")
     
     with st.expander("⚙️ Advanced Filters"):
@@ -76,7 +77,7 @@ if not df.empty:
         with col2:
             selected_type = st.multiselect("Category", df['Type'].unique())
             
-        years = sorted([y for y in df['Year'].unique() if pd.notna(y)], reverse=True)
+        years = [y for y in df['Year'].unique() if pd.notna(y)]
         selected_year = st.multiselect("Year", years)
 
     # Filtering Logic
@@ -96,11 +97,21 @@ if not df.empty:
     if selected_type:
         filtered_df = filtered_df[filtered_df['Type'].isin(selected_type)]
 
-    st.write(f"**{len(filtered_df)} lectures found**")
+    # --- PERFORMANCE OPTIMIZATION ---
+    # Only grab the top 10 results to render
+    DISPLAY_LIMIT = 10
+    total_results = len(filtered_df)
+    display_df = filtered_df.head(DISPLAY_LIMIT)
+
+    if total_results > DISPLAY_LIMIT:
+        st.info(f"Showing the top {DISPLAY_LIMIT} of {total_results} results. Use the Search or Filters to find specific lectures.")
+    else:
+        st.caption(f"Showing all {total_results} results.")
+    
     st.divider()
 
-    # 6. Render Lecture Cards
-    for i, row in filtered_df.iterrows():
+    # 6. Render ONLY the Top 10 Lecture Cards
+    for i, row in display_df.iterrows():
         source_url = str(row['Source Link'])
         file_id = ""
         if 'id=' in source_url:
@@ -111,7 +122,6 @@ if not df.empty:
         preview_url = f"https://drive.google.com/file/d/{file_id}/view"
         audio_stream = f"https://drive.google.com/uc?export=download&id={file_id}"
 
-        # Draw the custom HTML card
         st.markdown(f"""
             <div class="maharaj-card">
                 <div class="maharaj-title">{row['Code']}</div>
@@ -123,10 +133,8 @@ if not df.empty:
             </div>
         """, unsafe_allow_html=True)
         
-        # Audio Player
         st.audio(audio_stream, format="audio/mp3")
 
-        # Clean Native Buttons
         c1, c2, c3 = st.columns(3)
         with c1:
             st.link_button("▶️ Web Player", preview_url, use_container_width=True)
@@ -136,6 +144,6 @@ if not df.empty:
             share_text = f"Listen to Maharaj: {row['Code']} - {preview_url}"
             st.link_button("🔗 Share", f"https://wa.me/?text={share_text}", use_container_width=True)
         
-        st.write("") # Small spacer
+        st.write("") 
 else:
     st.error("Data not found. Please check your CSV.")
