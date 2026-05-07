@@ -1,126 +1,108 @@
 import streamlit as st
 import pandas as pd
 
-# Page Configuration
-st.set_page_config(page_title="Maharaj Audio App", page_icon="🙏", layout="wide")
+# 1. Page Config with Mobile-friendly Sidebar
+st.set_page_config(page_title="Maharaj Lectures", page_icon="🕉️", layout="wide")
 
-# Custom CSS for a professional, easy-to-read interface
+# 2. Advanced Custom CSS for "App Look"
 st.markdown("""
     <style>
-    .main { background-color: #f7f9fc; }
+    /* Main Background */
+    .stApp { background-color: #FFF9F2; }
+    
+    /* Card Styling */
     .lecture-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 12px;
-        border-left: 6px solid #ff9933;
-        margin-bottom: 20px;
-        box-shadow: 0px 4px 12px rgba(0,0,0,0.08);
+        background: white;
+        padding: 18px;
+        border-radius: 15px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #FFE0B2;
     }
+    
+    /* Title Styling */
     .lecture-title {
-        color: #1e293b !important;
+        color: #BF360C !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         font-weight: 700;
-        font-size: 1.25em;
-        margin-bottom: 8px;
-        line-height: 1.4;
+        font-size: 1.1rem;
+        margin-bottom: 5px;
     }
-    .lecture-tag {
+    
+    /* Metadata Pills */
+    .pill {
         display: inline-block;
-        background: #fff3e0;
-        color: #e65100;
-        padding: 3px 12px;
+        padding: 2px 10px;
         border-radius: 20px;
-        font-size: 0.85em;
+        font-size: 0.75rem;
         font-weight: 600;
-        margin-right: 8px;
+        margin-right: 5px;
+        background: #FBE9E7;
+        color: #D84315;
     }
-    .info-text {
-        color: #64748b;
-        font-size: 0.9em;
-        margin-top: 5px;
+    
+    /* Custom Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #FFF3E0;
     }
     </style>
     """, unsafe_allow_html=True)
 
 @st.cache_data
 def load_data():
-    try:
-        # Loading the metadata file
-        return pd.read_csv("Maharaj_Perfect_Metadata.csv")
-    except Exception as e:
-        st.error(f"Error loading CSV: {e}")
-        return None
+    return pd.read_csv("Maharaj_Perfect_Metadata.csv")
 
 df = load_data()
 
-if df is not None:
-    # --- Sidebar Filters ---
-    st.sidebar.header("🙏 App Filters")
-    search_query = st.sidebar.text_input("🔍 Search Topic / Verse", placeholder="E.g. Puri, SB 1.1...")
+# --- HEADER ---
+st.markdown("<h2 style='text-align: center; color: #E65100;'>🙏 Bhakti Gaurav Narayan Swami</h2>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #5D4037;'>Audio Lecture Library</p>", unsafe_allow_html=True)
+
+# --- SIDEBAR FILTERS ---
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2903/2903513.png", width=80)
+search_query = st.sidebar.text_input("🔍 Search", placeholder="Topic, Place, Verse...")
+
+with st.sidebar.expander("🛠️ Advanced Filters"):
+    selected_lang = st.multiselect("Language", df['Language'].unique(), default=df['Language'].unique())
+    selected_year = st.multiselect("Year", sorted(df['Year'].unique(), reverse=True))
+    selected_type = st.sidebar.radio("Category", ["All"] + list(df['Type'].unique()))
+
+# --- LOGIC ---
+filtered_df = df[df['Language'].isin(selected_lang)]
+if selected_year:
+    filtered_df = filtered_df[filtered_df['Year'].isin(selected_year)]
+if selected_type != "All":
+    filtered_df = filtered_df[filtered_df['Type'] == selected_type]
+if search_query:
+    filtered_df = filtered_df[filtered_df['File Name'].str.contains(search_query, case=False, na=False)]
+
+# --- MAIN LIST ---
+st.write(f"Showing {len(filtered_df)} lectures")
+
+for i, row in filtered_df.iterrows():
+    file_id = row['Source Link'].split('id=')[-1].split('&')[0]
+    preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
     
-    selected_lang = st.sidebar.multiselect("Language", options=df['Language'].unique(), default=df['Language'].unique())
-    selected_year = st.sidebar.multiselect("Year", options=sorted(df['Year'].unique(), reverse=True))
-    selected_type = st.sidebar.multiselect("Category", options=df['Type'].unique(), default=df['Type'].unique())
-
-    # --- Filtering Logic ---
-    filtered_df = df[
-        (df['Language'].isin(selected_lang)) & 
-        (df['Type'].isin(selected_type))
-    ]
-    
-    if selected_year:
-        filtered_df = filtered_df[filtered_df['Year'].isin(selected_year)]
-        
-    if search_query:
-        mask = (
-            filtered_df['File Name'].str.contains(search_query, case=False, na=False) |
-            filtered_df['Code'].str.contains(search_query, case=False, na=False) |
-            filtered_df['Location'].str.contains(search_query, case=False, na=False)
-        )
-        filtered_df = filtered_df[mask]
-
-    # --- Header ---
-    st.title("🙏 Maharaj Audio Library")
-    st.write(f"Showing **{len(filtered_df)}** lectures")
-
-    # --- Display Lectures ---
-    for i, row in filtered_df.iterrows():
-        # Correctly extract the Drive ID for the player
-        # Handles various link formats
-        source_url = str(row['Source Link'])
-        file_id = ""
-        if "id=" in source_url:
-            file_id = source_url.split('id=')[-1].split('&')[0]
-        elif "file/d/" in source_url:
-            file_id = source_url.split('file/d/')[-1].split('/')[0]
-
-        # Different formats for different needs
-        stream_url = f"https://drive.google.com/uc?id={file_id}&export=download"
-        preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
-
-        with st.container():
-            st.markdown(f"""
-                <div class="lecture-card">
-                    <div class="lecture-title">{row['Code']}</div>
-                    <div>
-                        <span class="lecture-tag">{row['Language']}</span>
-                        <span class="lecture-tag">{row['Type']}</span>
-                        <span class="info-text">📍 {row['Location']} | 📅 {row['Date']}</span>
-                    </div>
+    with st.container():
+        st.markdown(f"""
+            <div class="lecture-card">
+                <div class="lecture-title">{row['Code']}</div>
+                <div style="margin: 8px 0;">
+                    <span class="pill">🌍 {row['Language']}</span>
+                    <span class="pill">📍 {row['Location']}</span>
+                    <span class="pill">📅 {row['Year']}</span>
                 </div>
-            """, unsafe_allow_html=True)
-            
-            # 1. The Direct Audio Player (Works if Drive allows)
-            st.audio(stream_url, format="audio/mp3")
-            
-            # 2. Control Buttons for Devotees
-            col1, col2 = st.columns(2)
-            with col1:
-                # This opens Google's built-in player which ALWAYS works
-                st.link_button("▶️ Play Audio (Stable)", preview_url, use_container_width=True)
-            with col2:
-                # The direct download link
-                st.link_button("📥 Download MP3", source_url, use_container_width=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-else:
-    st.warning("CSV Data could not be loaded. Check your GitHub repository.")
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Action Buttons
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            st.link_button("▶️ Listen Now", preview_url, use_container_width=True)
+        with col2:
+            st.link_button("📥 Save", row['Source Link'], use_container_width=True)
+        with col3:
+            # WhatsApp Share Link
+            share_text = f"Listen to Maharaj: {row['Code']} - {preview_url}"
+            st.link_button("🔗 Share", f"https://wa.me/?text={share_text}", use_container_width=True)
+        st.markdown("<div style='margin-bottom:20px;'></div>", unsafe_allow_html=True)
