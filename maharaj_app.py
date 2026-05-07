@@ -4,7 +4,7 @@ import pandas as pd
 # 1. Page Configuration
 st.set_page_config(page_title="Maharaj Audio", page_icon="🕉️", layout="centered")
 
-# 2. Safe CSS for the Cards
+# 2. Safe CSS
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -48,14 +48,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. Optimized Data Loading
+# 3. Smart Data Loading
 @st.cache_data
 def load_data():
     try:
         df = pd.read_csv("Maharaj_Perfect_Metadata.csv")
-        # Ensure it's sorted by Year descending so the newest (e.g., 2026) are at the top
+        
+        # Create a hidden sorting column to check if the date is valid
+        df['Is_Valid'] = ~df['Date'].astype(str).str.lower().isin(['nan', 'unknown', 'none', ''])
+        
+        # Sort so that Valid Dates are at the top, followed by the newest Year
         if 'Year' in df.columns:
-            df = df.sort_values(by='Year', ascending=False)
+            df = df.sort_values(by=['Is_Valid', 'Year'], ascending=[False, False])
+            
         return df
     except:
         return pd.DataFrame()
@@ -77,7 +82,7 @@ if not df.empty:
         with col2:
             selected_type = st.multiselect("Category", df['Type'].unique())
             
-        years = [y for y in df['Year'].unique() if pd.notna(y)]
+        years = sorted([y for y in df['Year'].unique() if pd.notna(y)], reverse=True)
         selected_year = st.multiselect("Year", years)
 
     # Filtering Logic
@@ -97,20 +102,19 @@ if not df.empty:
     if selected_type:
         filtered_df = filtered_df[filtered_df['Type'].isin(selected_type)]
 
-    # --- PERFORMANCE OPTIMIZATION ---
-    # Only grab the top 10 results to render
+    # --- DISPLAY CAPPING ---
     DISPLAY_LIMIT = 10
     total_results = len(filtered_df)
     display_df = filtered_df.head(DISPLAY_LIMIT)
 
     if total_results > DISPLAY_LIMIT:
-        st.info(f"Showing the top {DISPLAY_LIMIT} of {total_results} results. Use the Search or Filters to find specific lectures.")
+        st.info(f"Showing top {DISPLAY_LIMIT} of {total_results} results. Use the search to find more.")
     else:
-        st.caption(f"Showing all {total_results} results.")
+        st.caption(f"Showing {total_results} results.")
     
     st.divider()
 
-    # 6. Render ONLY the Top 10 Lecture Cards
+    # 6. Render Lecture Cards with Dynamic Meta Text
     for i, row in display_df.iterrows():
         source_url = str(row['Source Link'])
         file_id = ""
@@ -121,6 +125,20 @@ if not df.empty:
 
         preview_url = f"https://drive.google.com/file/d/{file_id}/view"
         audio_stream = f"https://drive.google.com/uc?export=download&id={file_id}"
+        
+        # --- DYNAMIC META FORMATTING ---
+        meta_parts = []
+        loc = str(row['Location']).strip()
+        date = str(row['Date']).strip()
+        
+        if loc and loc.lower() not in ['nan', 'unknown', 'none', '']:
+            meta_parts.append(f"📍 {loc}")
+        if date and date.lower() not in ['nan', 'unknown', 'none', '']:
+            meta_parts.append(f"📅 {date}")
+            
+        meta_string = "  •  ".join(meta_parts)
+        if not meta_string:
+            meta_string = "🎙️ Audio Archive" # Fallback if both are missing
 
         st.markdown(f"""
             <div class="maharaj-card">
@@ -129,7 +147,7 @@ if not df.empty:
                     <span class="maharaj-tag">🌍 {row['Language']}</span>
                     <span class="maharaj-tag">🏷️ {row['Type']}</span>
                 </div>
-                <div class="maharaj-meta">📍 {row['Location']}  •  📅 {row['Date']}</div>
+                <div class="maharaj-meta">{meta_string}</div>
             </div>
         """, unsafe_allow_html=True)
         
