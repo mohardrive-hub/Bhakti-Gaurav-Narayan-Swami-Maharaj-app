@@ -80,7 +80,12 @@ try:
     for i, row in filtered_df.iterrows():
         # DEBUG/FIX: Converting 'export=download' to 'open' for better browser streaming
         # Some browsers block 'download' links in audio tags
-        streaming_url = row['Source Link'].replace("export=download", "open")
+        # --- NEW ROBUST STREAMING LOGIC ---
+        file_id = row['Source Link'].split('id=')[-1]
+        
+        # We try the 'uc' format which works best for Streamlit
+        streaming_url = f"https://drive.google.com/uc?export=open&id={file_id}"
+        # streaming_url = row['Source Link'].replace("export=download", "open")
         
         with st.container():
             st.markdown(f"""
