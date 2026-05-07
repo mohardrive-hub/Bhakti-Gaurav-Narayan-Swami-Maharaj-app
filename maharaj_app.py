@@ -94,7 +94,7 @@ if df is not None:
             file_id = source_url.split('file/d/')[-1].split('/')[0]
 
         # Different formats for different needs
-        stream_url = f"https://drive.google.com/uc?export=open&id={file_id}"
+        stream_url = f"https://drive.google.com/uc?id={file_id}&export=download"
         preview_url = f"https://drive.google.com/file/d/{file_id}/preview"
 
         with st.container():
